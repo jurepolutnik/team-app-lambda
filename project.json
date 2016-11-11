@@ -1,0 +1,8 @@
+{
+  "name": "imin",
+  "description": "",
+  "memory": 128,
+  "timeout": 10,
+  "role": "arn:aws:iam::654633334744:role/imin_lambda_function",
+  "environment": {}
+}
