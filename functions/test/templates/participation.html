@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+</body>
+</html>
+<!-- START CENTERED WHITE CONTAINER -->
+<table class="main">
+
+<!-- START MAIN CONTENT AREA -->
+<tr>
+<td class="wrapper">
+    <table border="0" cellpadding="0" cellspacing="0">
+    <tr>
+        <td>
+        <p>Hey,</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum ullamcorper blandit dolor, at 
+           bibendum lectus faucibus eu. Proin ultricies tellus velit, sit amet fringilla risus tempor in. 
+        </p>
+        <p>Event: <b>{{team.name}}</b> on <b>{{event.date|date}}</b> at <b>{{event.date|time}}</b></p>
+        <p>
+            Participants (<b>{{event.participants.length}}</b>):
+        </p>
+        <ul> {{event.participants}} 
+            <li>{{.}}</li> 
+        {{/event.participants}}</ul>
+        <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+            <tbody>
+            <tr>
+                <td align="left" >
+                <table style="width: 250px; margin: 20px auto;" border="0" cellpadding="0" cellspacing="0">
+                    <tbody>
+                    <tr>
+                        <td> <a href="https://fuzbal-d3001.firebaseapp.com/t/{{team.$key}}" target="_blank">Join</a> </td>
+                    </tr>
+                    </tbody>
+                </table>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <p>Have a nice day! Hope it works.</p>
+        </td>
+    </tr>
+    </table>
+</td>
+</tr>
+
+<!-- END MAIN CONTENT AREA -->
+</table>

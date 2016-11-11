@@ -8,70 +8,126 @@ var aws = require('aws-sdk');
 var ses = new aws.SES();
 var firebase = require('firebase');
 
-firebase.initializeApp(config.firebase)
+var fs = require('fs')
+var mark = require('markup-js');
+var moment = require('moment');
 
+var templates = {};
 
 exports.handle = function (e, ctx, cb) {
-    ctx.callbackWaitsForEmptyEventLoop = false;  //<---Important
-    var ref = firebase.database().ref('/teams');
-    ref.once('value').then(function (snapshot) {
-        var teams = snapshot.val();
-        processTeams(teams).finally(_ => ctx.succeed());
+    initialize(ctx).then(function () {
+        var ref = firebase.database().ref('/teams');
+        ref.once('value').then(function (snapshot) {
+            var teams = snapshot.val();
+            processTeams(teams).finally(_ => ctx.succeed());
+        });
     });
 }
 
-function processTeams (teams) {
+function initialize(ctx) {
+    initializeCustomPipes();
+    ctx.callbackWaitsForEmptyEventLoop = false;  //<---Important
+    firebase.initializeApp(config.firebase)
+
+    return readTemplates();
+}
+
+function initializeCustomPipes () {
+    mark.pipes.date = function (date) {
+        // TODO: correctly handle GMT+0
+        return moment(date).add(1, 'hour').format('MMMM Do YYYY');
+    };
+
+    mark.pipes.time = function (date) {
+        return moment(date).format('h:mm a');
+    };
+}
+
+function readTemplates() {
+    return Promise.all(['base', 'participation', 'reminder'].map(readTemplate))
+}
+
+function readTemplate(name) {
+    return new Promise(function (fulfill, reject) {
+        console.log('Reading template: ' + name);
+        fs.readFile('./templates/' + name + '.html', 'utf8', function (err, data) {
+            if (err) {
+                console.log(err);
+                reject();
+            } else {
+                templates[name] = data;
+                fulfill();
+            }
+        });
+    });
+}
+
+function processTeams(teams) {
     console.log('Teams : ' + teams);
     console.log(teams.fuzbal);
-    var promises = Object.keys(teams).map(function (key) {
-        var team = teams[key];
+    var promises = Object.keys(teams).map(function ($key) {
+        var team = teams[$key];;
+        team.$key = $key;
         return processTeam(team);
     });
 
     return Promise.all(promises)
 }
 
-function processTeam (team) {
-    var ref = firebase.database().ref('/events/'+team.event);
+function processTeam(team) {
+    console.log('Process team: ' + team.name);
+    var ref = firebase.database().ref('/events/' + team.event);
     return ref.once('value').then(function (snapshot) {
         var event = snapshot.val();
         return sendEventEmails(team, event)
     });
 }
 
-function sendEventEmails (team, event) {
+function sendEventEmails(team, event) {
     var now = new Date();
     var eventDate = new Date(event.date);
 
-    var hoursDiff = Math.floor((eventDate - now) / 36e5);
+    var hoursDiff = Math.ceil((eventDate - now) / 36e5);
+    console.log('Event: ' + eventDate);
+    console.log('Now: ' + now);
+    console.log('Hours diff: ' + hoursDiff);
 
-    if (hoursDiff === 18) {
-        return sendEventPaticipation(team, event);
+    if (hoursDiff === 36) {
+        return sendEventReminder(team, event);
     }
 
     if (hoursDiff === 6) {
-        return sendEventReminder(team, event);
+        return sendEventParticipation(team, event);
     }
 
     return Promise.resolve();
 }
 
-function sendEventReminder (team, event) {
-    var subject = team.name + ' reminder';
-    var body = `Ale, \n\ngremo se prijavit na http://fuzbal.xlab.si`;
-    return sendEmail(team, subject, body);
+function sendEventReminder(team, event) {
+    console.log('Send event reminter.');
+    var subject = `[${team.name} Event] Reminder`;
+    var preheader = moment(event.date).add(1, 'hour').format('MMMM Do YYYY [at] h:mm a | ');
+    var main = mark.up(templates['reminder'], {team: team, event: event});
+    var html = mark.up(templates['base'], {main: main, preheader: preheader});
+
+    return sendEmail(team, subject, html);
 }
 
-function sendEventPaticipation (team, event) {
-    var members = Object.keys(event.members).map (key => event.members[key].name);
+function sendEventParticipation(team, event) {
+    console.log('Send event paticipation.');
+    console.log(event);
+    event.participants = Object.keys(event.members || []).map(key => event.members[key].name);
 
-    var subject = team.name;
-    var body = `Prijavljeni (${members.length}): \n - ${members.join('\n - ')} \n\nhttp://fuzbal.xlab.si`;
-    return sendEmail(team, subject, body);
+    var subject = `[${team.name} Event] Participants`;
+    var preheader = `Participants (${event.participants.length}) | `;
+    var main = mark.up(templates['participation'], {team: team, event: event});
+    var html = mark.up(templates['base'], {main: main, preheader: preheader});
+
+    return sendEmail(team, subject, html);
 }
 
 
-function sendEmail(team, subject, body) {
+function sendEmail(team, subject, html) {
     var params = {
         Destination: {
             ToAddresses: [
@@ -84,8 +140,8 @@ function sendEmail(team, subject, body) {
                 Charset: 'UTF-8'
             },
             Body: {
-                Text: {
-                    Data: body,
+                Html: {
+                    Data: html,
                     Charset: 'UTF-8'
                 }
             }
@@ -96,8 +152,8 @@ function sendEmail(team, subject, body) {
         ]
     };
 
-    console.log(params);
-    console.log(params.Message.Body.Text.Data);
+    // console.log(params);
+    // console.log(params.Message.Body.Html.Data);
 
     return new Promise(function (fulfill, reject) {
         console.log('sending');
