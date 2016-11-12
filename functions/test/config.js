@@ -9,11 +9,4 @@ config.firebase = {
     storageBucket: 'fuzbal-d3001.appspot.com',
 }
 
-config.mail = {
-    "templateBucket" : "my-bucket",
-    "templateKey" : "templates/template.html",
-    "fromAddress": "Fuzbal <jure.polutnik@gmail.com>",
-    "defaultSubject" : "Email From {{name}}",
-}
-
 module.exports = config
