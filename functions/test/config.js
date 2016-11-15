@@ -9,4 +9,8 @@ config.firebase = {
     storageBucket: 'fuzbal-d3001.appspot.com',
 }
 
+config.email = {
+    source: 'jure.polutnik@gmail.com'
+}
+
 module.exports = config

@@ -105,7 +105,7 @@ function sendEventEmails(team, event) {
 
 function sendEventReminder(team, event) {
     console.log('Send event reminter.');
-    var subject = `[${team.name} Event] Reminder`;
+    var subject = `[${team.name}] Reminder`;
     var preheader = moment(event.date).add(1, 'hour').format('MMMM Do YYYY [at] h:mm a | ');
     var main = mark.up(templates['reminder'], {team: team, event: event});
     var html = mark.up(templates['base'], {main: main, preheader: preheader});
@@ -118,7 +118,7 @@ function sendEventParticipation(team, event) {
     console.log(event);
     event.participants = Object.keys(event.members || []).map(key => event.members[key].name);
 
-    var subject = `[${team.name} Event] Participants`;
+    var subject = `[${team.name}] Participants`;
     var preheader = `Participants (${event.participants.length}) | `;
     var main = mark.up(templates['participation'], {team: team, event: event});
     var html = mark.up(templates['base'], {main: main, preheader: preheader});
@@ -146,11 +146,13 @@ function sendEmail(team, subject, html) {
                 }
             }
         },
-        Source: team.email,
+        Source: `${team.name} <${config.email.source}>`,
         ReplyToAddresses: [
             team.email
         ]
     };
+
+    console.log(params.Source)
 
     // console.log(params);
     // console.log(params.Message.Body.Html.Data);
