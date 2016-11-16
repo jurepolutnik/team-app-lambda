@@ -10,7 +10,7 @@ config.firebase = {
 }
 
 config.email = {
-    source: 'jure.polutnik@gmail.com'
+    source: 'jure.polutnik@gmail.com',
 }
 
 module.exports = config

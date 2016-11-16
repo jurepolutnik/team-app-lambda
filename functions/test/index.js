@@ -3,6 +3,9 @@
 var Promise = require('promise');
 
 var config = require('./config.js');
+var nodemailer = require('nodemailer');
+var smtpTransport = require('nodemailer-smtp-transport');
+
 
 var aws = require('aws-sdk');
 var ses = new aws.SES();
@@ -32,7 +35,7 @@ function initialize(ctx) {
     return readTemplates();
 }
 
-function initializeCustomPipes () {
+function initializeCustomPipes() {
     mark.pipes.date = function (date) {
         // TODO: correctly handle GMT+0
         return moment(date).add(1, 'hour').format('MMMM Do YYYY');
@@ -67,6 +70,7 @@ function processTeams(teams) {
     console.log(teams.fuzbal);
     var promises = Object.keys(teams).map(function ($key) {
         var team = teams[$key];;
+        console.log('Team: ' + team.name);
         team.$key = $key;
         return processTeam(team);
     });
@@ -107,10 +111,10 @@ function sendEventReminder(team, event) {
     console.log('Send event reminter.');
     var subject = `[${team.name}] Reminder`;
     var preheader = moment(event.date).add(1, 'hour').format('MMMM Do YYYY [at] h:mm a | ');
-    var main = mark.up(templates['reminder'], {team: team, event: event});
-    var html = mark.up(templates['base'], {main: main, preheader: preheader});
+    var main = mark.up(templates['reminder'], { team: team, event: event });
+    var html = mark.up(templates['base'], { main: main, preheader: preheader });
 
-    return sendEmail(team, subject, html);
+    return sendEmailNodemailer(team, subject, html);
 }
 
 function sendEventParticipation(team, event) {
@@ -120,12 +124,36 @@ function sendEventParticipation(team, event) {
 
     var subject = `[${team.name}] Participants`;
     var preheader = `Participants (${event.participants.length}) | `;
-    var main = mark.up(templates['participation'], {team: team, event: event});
-    var html = mark.up(templates['base'], {main: main, preheader: preheader});
+    var main = mark.up(templates['participation'], { team: team, event: event });
+    var html = mark.up(templates['base'], { main: main, preheader: preheader });
 
-    return sendEmail(team, subject, html);
+    return sendEmailNodemailer(team, subject, html);
 }
 
+
+function sendEmailNodemailer(team, subject, html) {
+    var transporter = nodemailer.createTransport(config.email.smpts);
+    var mailOptions = {
+        from: `${team.name} <${config.email.source}>`,
+        to: team.email,
+        subject: subject,
+        html: html
+    };
+
+    // send mail with defined transport object
+    return new Promise(function (fulfill, reject) {
+        console.log('sending');
+        transporter.sendMail(mailOptions, function (err, data) {
+            if (err) {
+                console.log(err, err.stack);
+                reject();
+            } else {
+                console.log(data);
+                fulfill();
+            }
+        });
+    });
+}
 
 function sendEmail(team, subject, html) {
     var params = {
