@@ -38,11 +38,11 @@ function initialize(ctx) {
 function initializeCustomPipes() {
     mark.pipes.date = function (date) {
         // TODO: correctly handle GMT+0
-        return moment(date).add(1, 'hour').format('MMMM Do YYYY');
+        return moment(date).format('MMMM Do YYYY');
     };
 
     mark.pipes.time = function (date) {
-        return moment(date).format('h:mm a');
+        return moment(date).add(1, 'hour').format('h:mm a');
     };
 }
 
@@ -104,6 +104,8 @@ function sendEventEmails(team, event) {
         return sendEventParticipation(team, event);
     }
 
+    // TODO: Last hour participation diff
+
     return Promise.resolve();
 }
 
@@ -114,7 +116,7 @@ function sendEventReminder(team, event) {
     var main = mark.up(templates['reminder'], { team: team, event: event });
     var html = mark.up(templates['base'], { main: main, preheader: preheader });
 
-    return sendEmailNodemailer(team, subject, html);
+    return sendEmail(team, subject, html);
 }
 
 function sendEventParticipation(team, event) {
@@ -127,33 +129,9 @@ function sendEventParticipation(team, event) {
     var main = mark.up(templates['participation'], { team: team, event: event });
     var html = mark.up(templates['base'], { main: main, preheader: preheader });
 
-    return sendEmailNodemailer(team, subject, html);
+    return sendEmail(team, subject, html);
 }
 
-
-function sendEmailNodemailer(team, subject, html) {
-    var transporter = nodemailer.createTransport(config.email.smpts);
-    var mailOptions = {
-        from: `${team.name} <${config.email.source}>`,
-        to: team.email,
-        subject: subject,
-        html: html
-    };
-
-    // send mail with defined transport object
-    return new Promise(function (fulfill, reject) {
-        console.log('sending');
-        transporter.sendMail(mailOptions, function (err, data) {
-            if (err) {
-                console.log(err, err.stack);
-                reject();
-            } else {
-                console.log(data);
-                fulfill();
-            }
-        });
-    });
-}
 
 function sendEmail(team, subject, html) {
     var params = {
