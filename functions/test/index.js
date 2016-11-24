@@ -47,7 +47,7 @@ function initializeCustomPipes() {
 }
 
 function readTemplates() {
-    return Promise.all(['base', 'participation', 'reminder'].map(readTemplate))
+    return Promise.all(['base', 'participation', 'reminder', 'diff'].map(readTemplate))
 }
 
 function readTemplate(name) {
@@ -104,7 +104,9 @@ function sendEventEmails(team, event) {
         return sendEventParticipation(team, event);
     }
 
-    // TODO: Last hour participation diff
+    if (hoursDiff === 1) {
+        return sendEventParticipationDiff(team, event);
+    }
 
     return Promise.resolve();
 }
@@ -122,11 +124,53 @@ function sendEventReminder(team, event) {
 function sendEventParticipation(team, event) {
     console.log('Send event paticipation.');
     console.log(event);
-    event.participants = Object.keys(event.members || []).map(key => event.members[key].name);
+    event.participants = Object.keys(event.members || [])
+        .map(key => event.members[key])
+        .filter(member=>!member.deleted)
+        .map(member => member.name);
 
     var subject = `[${team.name}] Participants`;
     var preheader = `Participants (${event.participants.length}) | `;
     var main = mark.up(templates['participation'], { team: team, event: event });
+    var html = mark.up(templates['base'], { main: main, preheader: preheader });
+
+    return sendEmail(team, subject, html);
+}
+
+function sendEventParticipationDiff(team, event) {
+    // TODO: refactor !!
+    console.log('Send event paticipation diff.');
+    console.log(event);
+
+    event.added = 0;
+    event.removed = 0;
+    event.active = 0;
+    event.participants = Object.keys(event.members || []).map(key => event.members[key]).map(member => {
+        var from = new Date(event.date - 6*36e5);
+        var created = new Date(member.created);
+        var removed = new Date(member.removed);
+
+        if (member.removed) {
+            if (from > created && from < removed) {
+                event.removed++;
+                return '<span style="color:red;">-</span>' + member.name;
+            }
+            return null;
+        } else {
+            event.active++;
+            if (from < created) {
+                event.added++;
+                return '<span style="color:green;">+</span>' + member.name;
+            }
+            return member.name; 
+        }
+     }).filter (name => !!name);
+
+     if (!event.added && !event.removed) return Promise.resolve(); // no updates
+
+    var subject = `[${team.name}] Participation update`;
+    var preheader = `Diff (${event.active} +${event.added} -${event.removed}) | `;
+    var main = mark.up(templates['diff'], { team: team, event: event });
     var html = mark.up(templates['base'], { main: main, preheader: preheader });
 
     return sendEmail(team, subject, html);
