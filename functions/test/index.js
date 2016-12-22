@@ -104,8 +104,14 @@ function sendEventEmails(team, event) {
         return sendEventParticipation(team, event);
     }
 
+    if (hoursDiff === 4) {
+        var from = new Date(event.date - 6*36e5);
+        return sendEventParticipationDiff(team, event, from);
+    }
+
     if (hoursDiff === 1) {
-        return sendEventParticipationDiff(team, event);
+        var from = new Date(event.date - 4*36e5);
+        return sendEventParticipationDiff(team, event, from);
     }
 
     return Promise.resolve();
@@ -127,6 +133,7 @@ function sendEventParticipation(team, event) {
     event.participants = Object.keys(event.members || [])
         .map(key => event.members[key])
         .filter(member=>!member.deleted)
+        .filter(member=>!member.removed)
         .map(member => member.name);
 
     var subject = `[${team.name}] Participants`;
@@ -137,7 +144,7 @@ function sendEventParticipation(team, event) {
     return sendEmail(team, subject, html);
 }
 
-function sendEventParticipationDiff(team, event) {
+function sendEventParticipationDiff(team, event, from) {
     // TODO: refactor !!
     console.log('Send event paticipation diff.');
     console.log(event);
@@ -146,7 +153,6 @@ function sendEventParticipationDiff(team, event) {
     event.removed = 0;
     event.active = 0;
     event.participants = Object.keys(event.members || []).map(key => event.members[key]).map(member => {
-        var from = new Date(event.date - 6*36e5);
         var created = new Date(member.created);
         var removed = new Date(member.removed);
 
