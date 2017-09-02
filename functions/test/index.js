@@ -114,11 +114,29 @@ function sendEventEmails(team, event) {
         return sendEventParticipationDiff(team, event, from);
     }
 
+    if (hoursDiff === -24 && event.repeat) {
+        return repeatEvent(team, event);
+    }
+
     return Promise.resolve();
 }
 
+function repeatEvent(team, event) {
+    console.log('Repeat event');
+    let newEvent = {};
+    console.log(event.date);
+    newEvent.date = event.date + event.repeat*(24*60*60*1000);
+    newEvent.location = event.location;
+    let newEventId = `${team.name}-${newEvent.date}`;
+    return firebase.database().ref(`/events/${newEventId}`)
+    .set(newEvent)
+    .then(snapshot => {
+        return firebase.database().ref(`/teams/${team.$key}`).update({event: newEventId})
+    });
+}
+
 function sendEventReminder(team, event) {
-    console.log('Send event reminter.');
+    console.log('Send event reminder.');
     var subject = `[${team.name}] Reminder`;
     var preheader = moment(event.date).add(1, 'hour').format('MMMM Do YYYY [at] h:mm a | ');
     var main = mark.up(templates['reminder'], { team: team, event: event });
